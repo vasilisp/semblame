@@ -1,0 +1,7 @@
+---
+description: 
+globs: *.go
+alwaysApply: false
+---
+Always refer to `PROJECT_GUIDE.md` as the source of truth for project goals,
+scope, and architectural decisions unless instructed otherwise.
