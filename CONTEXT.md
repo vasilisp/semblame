@@ -88,7 +88,3 @@ powerful baseline to build on.
 - Fine-tune summarization models on commit-diff pairs
 - IDE integrations (e.g., Cursor, VS Code)
 - Visualization of semantic evolution
-
----
-
-Let me know if you'd like this exported as a file, converted into Markdown, or adapted to match a specific directory layout.
