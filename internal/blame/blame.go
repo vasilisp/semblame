@@ -40,7 +40,7 @@ func Blame(ctx context.Context, repoPath string, matches []shared.Match, query s
 	messages = append(messages, lingograph.UserPrompt(query, false))
 
 	client := openai.NewClient(openai.APIKeyFromEnv())
-	actor := openai.NewActor(client, openai.GPT4oMini, data.SystemPrompt, nil)
+	actor := openai.NewActor(client, openai.GPT41Mini, data.SystemPrompt, nil)
 
 	messages = append(messages, actor.Pipeline(extra.Echoln(os.Stdout, ""), false, 3))
 
