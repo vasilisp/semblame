@@ -1,13 +1,7 @@
-Here’s a self-contained project description document tailored for sharing in
-Cursor, designed to establish clear context, objectives, and implementation
-scope for your initial development phase of **Semblame**:
-
----
-
 # **Semblame**
 
 **Tagline**: *Semantic Git blame: understanding not just who changed a line of
-*code, but why.*
+code, but why.*
 
 ## **Project Overview**
 
