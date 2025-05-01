@@ -2,12 +2,14 @@ package cli
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"os"
 
+	"github.com/vasilisp/semblame/internal/blame"
 	"github.com/vasilisp/semblame/internal/db"
 	"github.com/vasilisp/semblame/internal/git"
 	"github.com/vasilisp/semblame/internal/openai"
+	"github.com/vasilisp/semblame/internal/shared"
 )
 
 type embeddingDimensions uint16
@@ -35,7 +37,7 @@ func ingest(ctx context.Context, repoPath string) error {
 	return nil
 }
 
-func similarityQuery(ctx context.Context, repoPath, query string) error {
+func similarityQuery(ctx context.Context, repoPath, query string) []shared.Match {
 	config := git.NewConfig(ctx, repoPath)
 
 	dbh := db.Open(ctx, config.UUID)
@@ -45,19 +47,15 @@ func similarityQuery(ctx context.Context, repoPath, query string) error {
 
 	embedding, err := client.Embed(query)
 	if err != nil {
-		return err
+		log.Fatalf("failed to embed query: %v", err)
 	}
 
 	results, err := db.QueryCommitEmbeddings(dbh, embedding, 10)
 	if err != nil {
-		return err
+		log.Fatalf("failed to query commit embeddings: %v", err)
 	}
 
-	for _, result := range results {
-		fmt.Printf("%s: %f\n", result.CommitHash, result.Distance)
-	}
-
-	return nil
+	return results
 }
 
 func Main() {
@@ -77,10 +75,8 @@ func Main() {
 		repoPath := os.Args[2]
 		query := os.Args[3]
 
-		if err := similarityQuery(context.Background(), repoPath, query); err != nil {
-			panic(err)
-		}
+		results := similarityQuery(context.Background(), repoPath, query)
 
-		return
+		blame.Blame(context.Background(), repoPath, results, query)
 	}
 }

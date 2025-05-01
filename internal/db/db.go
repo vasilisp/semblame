@@ -10,6 +10,7 @@ import (
 	sqlite_vec "github.com/asg017/sqlite-vec-go-bindings/cgo"
 	"github.com/google/uuid"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/vasilisp/semblame/internal/shared"
 )
 
 const createCommitsTableSQL = `
@@ -61,12 +62,7 @@ func InsertCommitEmbedding(db *sql.DB, commitHash string, embedding []float64) {
 	}
 }
 
-type Match struct {
-	CommitHash string
-	Distance   float64
-}
-
-func QueryCommitEmbeddings(db *sql.DB, embedding []float64, n int) ([]Match, error) {
+func QueryCommitEmbeddings(db *sql.DB, embedding []float64, n int) ([]shared.Match, error) {
 	floats := make([]float32, len(embedding))
 	for i, v := range embedding {
 		floats[i] = float32(v)
@@ -88,14 +84,14 @@ func QueryCommitEmbeddings(db *sql.DB, embedding []float64, n int) ([]Match, err
 	}
 	defer rows.Close()
 
-	var results []Match
+	var results []shared.Match
 	for rows.Next() {
 		var commitHash string
 		var distance float64
 		if err := rows.Scan(&commitHash, &distance); err != nil {
 			return nil, fmt.Errorf("failed to scan query result: %v", err)
 		}
-		results = append(results, Match{
+		results = append(results, shared.Match{
 			CommitHash: commitHash,
 			Distance:   distance,
 		})

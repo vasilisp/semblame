@@ -60,3 +60,16 @@ func GitLog(ctx context.Context, repoPath string, entryHandler func(commitHash s
 
 	return cmd.Wait()
 }
+
+// GetCommit returns the contents of a commit using `git show -p <commitHash>`.
+// It returns the output as a string, or an error if the command fails.
+func GetCommit(ctx context.Context, repoPath, commitHash string) (string, error) {
+	cmd := exec.CommandContext(ctx, "git", "-C", repoPath, "show", "-p", commitHash)
+
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+
+	return string(out), nil
+}
