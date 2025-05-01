@@ -61,6 +61,52 @@ func InsertCommitEmbedding(db *sql.DB, commitHash string, embedding []float64) {
 	}
 }
 
+type Match struct {
+	CommitHash string
+	Distance   float64
+}
+
+func QueryCommitEmbeddings(db *sql.DB, embedding []float64, n int) ([]Match, error) {
+	floats := make([]float32, len(embedding))
+	for i, v := range embedding {
+		floats[i] = float32(v)
+	}
+
+	blob, err := sqlite_vec.SerializeFloat32(floats)
+	if err != nil {
+		return nil, fmt.Errorf("failed to serialize query embedding: %v", err)
+	}
+
+	rows, err := db.Query(`
+		SELECT commit_hash, vec_distance_cosine(embedding, ?) as distance
+		FROM commit_embeddings
+		ORDER BY distance ASC
+		LIMIT ?
+	`, blob, n)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query commit embeddings: %v", err)
+	}
+	defer rows.Close()
+
+	var results []Match
+	for rows.Next() {
+		var commitHash string
+		var distance float64
+		if err := rows.Scan(&commitHash, &distance); err != nil {
+			return nil, fmt.Errorf("failed to scan query result: %v", err)
+		}
+		results = append(results, Match{
+			CommitHash: commitHash,
+			Distance:   distance,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %v", err)
+	}
+
+	return results, nil
+}
+
 // GetCommitEmbedding retrieves the embedding vector for a given commit hash.
 func GetCommitEmbedding(db *sql.DB, commitHash string) ([]float64, error) {
 	row := db.QueryRow("SELECT embedding FROM commit_embeddings WHERE commit_hash = ?", commitHash)

@@ -133,3 +133,19 @@ func RepoUUID(ctx context.Context, repoPath string) uuid.UUID {
 
 	return id
 }
+
+type Config struct {
+	UUID       uuid.UUID
+	Model      string
+	Dimensions uint16
+	RepoPath   string
+}
+
+func NewConfig(ctx context.Context, repoPath string) Config {
+	return Config{
+		UUID:       RepoUUID(ctx, repoPath),
+		Model:      EmbeddingModel(ctx, repoPath),
+		Dimensions: EmbeddingDimensions(ctx, repoPath),
+		RepoPath:   repoPath,
+	}
+}
