@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"os"
 
@@ -34,17 +35,18 @@ func ingest(ctx context.Context, repoPath string) error {
 		var embedding []float64
 
 		if note != "" {
-			var embeddingJSON openai.EmbeddingJSON
-			err := embeddingJSON.UnmarshalJSON([]byte(note))
+			embeddingJSON, err := openai.UnmarshalJSON([]byte(note))
 			if err != nil {
 				return err
 			}
 
-			if embeddingJSON.Model != config.Model || embeddingJSON.Dimensions != config.Dimensions {
-				println("dimensions mismatch", embeddingJSON.Dimensions, config.Dimensions)
+			if embeddingJSON.EmbeddingModel() != config.Model || embeddingJSON.EmbeddingDimensions() != config.Dimensions {
 				embedding = nil
 			} else {
-				embedding = embeddingJSON.Vector
+				embedding, err = embeddingJSON.EmbeddingVector()
+				if err != nil {
+					return err
+				}
 			}
 		}
 
@@ -57,14 +59,9 @@ func ingest(ctx context.Context, repoPath string) error {
 			util.Assert(config.Dimensions > 0, "dimensions are not set")
 
 			if config.WriteNotes {
-				embeddingJSON := openai.EmbeddingJSON{
-					Type:       openai.EmbeddingTypeCommit,
-					Model:      config.Model,
-					Dimensions: config.Dimensions,
-					Vector:     embedding,
-				}
+				embeddingJSON := openai.MakeEmbeddingJSON(openai.EmbeddingTypeCommit, config.Model, config.Dimensions, "", embedding)
 
-				noteBytes, err := embeddingJSON.MarshalJSON()
+				noteBytes, err := json.Marshal(embeddingJSON)
 				if err != nil {
 					return err
 				}

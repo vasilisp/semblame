@@ -102,67 +102,67 @@ func (t EmbeddingType) String() string {
 	}
 }
 
-type EmbeddingJSON struct {
-	Type       EmbeddingType
-	Model      shared.EmbeddingModel
-	Dimensions uint32
-	File       string
-	Vector     []float64
+type EmbeddingJSON interface {
+	EmbeddingModel() shared.EmbeddingModel
+	EmbeddingDimensions() uint32
+	EmbeddingVector() ([]float64, error)
+}
+
+func MakeEmbeddingJSON(typ EmbeddingType, model shared.EmbeddingModel, dimensions uint32, file string, vector []float64) EmbeddingJSON {
+	util.Assert(len(vector) > 0, "MakeEmbeddingJSON empty vector")
+	util.Assert(dimensions > 0, "MakeEmbeddingJSON non-positive dimensions")
+
+	bufVector := make([]byte, 8*len(vector))
+	for i, v := range vector {
+		bits := math.Float64bits(v)
+		binary.LittleEndian.PutUint64(bufVector[i*8:], bits)
+	}
+
+	return &embeddingJSON{
+		Type:       typ.String(),
+		Model:      model.String(),
+		Dimensions: dimensions,
+		File:       file,
+		Vector:     base64.StdEncoding.EncodeToString(bufVector),
+	}
 }
 
 type embeddingJSON struct {
-	Type       string
-	Model      string
-	Dimensions uint32
-	File       string
-	Vector     string
+	Type       string `json:"type"`
+	Model      string `json:"model"`
+	Dimensions uint32 `json:"dimensions"`
+	File       string `json:"file"`
+	Vector     string `json:"vector"`
 }
 
-func (e *EmbeddingJSON) MarshalJSON() ([]byte, error) {
-	buf := make([]byte, 8*len(e.Vector))
-	for i, v := range e.Vector {
-		bits := math.Float64bits(v)
-		binary.LittleEndian.PutUint64(buf[i*8:], bits)
-	}
-
-	emb := embeddingJSON{
-		Type:       e.Type.String(),
-		Model:      e.Model.String(),
-		Dimensions: e.Dimensions,
-		File:       e.File,
-		Vector:     base64.StdEncoding.EncodeToString(buf),
-	}
-
-	return json.Marshal(emb)
-}
-
-func (e *EmbeddingJSON) UnmarshalJSON(data []byte) error {
+func UnmarshalJSON(data []byte) (EmbeddingJSON, error) {
 	var emb embeddingJSON
 	if err := json.Unmarshal(data, &emb); err != nil {
-		return err
+		return nil, err
 	}
 
-	var typ EmbeddingType
-	if err := typ.FromString(emb.Type); err != nil {
-		return fmt.Errorf("invalid type: %v", err)
-	}
-	e.Type = typ
+	return &emb, nil
+}
 
-	e.Model = shared.EmbeddingModelFromString(emb.Model)
-	e.File = emb.File
-	e.Dimensions = emb.Dimensions
+func (e *embeddingJSON) EmbeddingModel() shared.EmbeddingModel {
+	return shared.EmbeddingModelFromString(e.Model)
+}
 
-	buf, err := base64.StdEncoding.DecodeString(emb.Vector)
+func (e *embeddingJSON) EmbeddingDimensions() uint32 {
+	return e.Dimensions
+}
+
+func (e *embeddingJSON) EmbeddingVector() ([]float64, error) {
+	bufVector, err := base64.StdEncoding.DecodeString(e.Vector)
 	if err != nil {
-		return fmt.Errorf("failed to decode vector base64: %v", err)
+		return nil, err
 	}
 
-	vector := make([]float64, len(buf)/8)
+	vector := make([]float64, len(bufVector)/8)
 	for i := range vector {
-		bits := binary.LittleEndian.Uint64(buf[i*8:])
+		bits := binary.LittleEndian.Uint64(bufVector[i*8:])
 		vector[i] = math.Float64frombits(bits)
 	}
-	e.Vector = vector
 
-	return nil
+	return vector, nil
 }
