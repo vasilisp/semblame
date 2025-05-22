@@ -126,10 +126,11 @@ func (e *EmbeddingJSON) MarshalJSON() ([]byte, error) {
 	}
 
 	emb := embeddingJSON{
-		Type:   e.Type.String(),
-		Model:  e.Model.String(),
-		File:   e.File,
-		Vector: base64.StdEncoding.EncodeToString(buf),
+		Type:       e.Type.String(),
+		Model:      e.Model.String(),
+		Dimensions: e.Dimensions,
+		File:       e.File,
+		Vector:     base64.StdEncoding.EncodeToString(buf),
 	}
 
 	return json.Marshal(emb)
@@ -149,6 +150,7 @@ func (e *EmbeddingJSON) UnmarshalJSON(data []byte) error {
 
 	e.Model = shared.EmbeddingModelFromString(emb.Model)
 	e.File = emb.File
+	e.Dimensions = emb.Dimensions
 
 	buf, err := base64.StdEncoding.DecodeString(emb.Vector)
 	if err != nil {

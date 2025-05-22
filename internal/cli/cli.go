@@ -10,6 +10,7 @@ import (
 	"github.com/vasilisp/semblame/internal/git"
 	"github.com/vasilisp/semblame/internal/openai"
 	"github.com/vasilisp/semblame/internal/shared"
+	"github.com/vasilisp/semblame/internal/util"
 )
 
 type embeddingDimensions uint16
@@ -40,6 +41,7 @@ func ingest(ctx context.Context, repoPath string) error {
 			}
 
 			if embeddingJSON.Model != config.Model || embeddingJSON.Dimensions != config.Dimensions {
+				println("dimensions mismatch", embeddingJSON.Dimensions, config.Dimensions)
 				embedding = nil
 			} else {
 				embedding = embeddingJSON.Vector
@@ -52,8 +54,11 @@ func ingest(ctx context.Context, repoPath string) error {
 				return err
 			}
 
+			util.Assert(config.Dimensions > 0, "dimensions are not set")
+
 			if config.WriteNotes {
 				embeddingJSON := openai.EmbeddingJSON{
+					Type:       openai.EmbeddingTypeCommit,
 					Model:      config.Model,
 					Dimensions: config.Dimensions,
 					Vector:     embedding,

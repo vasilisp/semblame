@@ -4,6 +4,8 @@ import (
 	"context"
 	"os/exec"
 	"strings"
+
+	"github.com/vasilisp/semblame/internal/util"
 )
 
 // GetCommitNote retrieves the note attached to a given commit hash (if any) using `git notes show <commitHash>`.
@@ -25,6 +27,8 @@ func GetCommitNote(ctx context.Context, repoPath, commitHash string) (string, er
 }
 
 func SetCommitNote(ctx context.Context, repoPath, commitHash, note string) error {
-	cmd := exec.CommandContext(ctx, "git", "-C", repoPath, "notes", "add", commitHash, note)
+	util.Assert(note != "", "note is empty")
+
+	cmd := exec.CommandContext(ctx, "git", "-C", repoPath, "notes", "add", "-f", "-m", note, commitHash)
 	return cmd.Run()
 }
