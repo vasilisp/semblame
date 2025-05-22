@@ -24,7 +24,7 @@ func ingest(ctx context.Context, repoPath string) error {
 
 	client := openai.NewEmbeddingClient(config.Model, config.Dimensions)
 
-	git.GitLog(ctx, repoPath, func(commitHash string, entry string) error {
+	err := git.GitLog(ctx, repoPath, func(commitHash string, entry string) error {
 		note, err := git.GetCommitNote(ctx, repoPath, commitHash)
 		if err != nil {
 			return err
@@ -72,6 +72,9 @@ func ingest(ctx context.Context, repoPath string) error {
 
 		return nil
 	})
+	if err != nil {
+		log.Fatalf("failed to ingest: %v", err)
+	}
 
 	return nil
 }
