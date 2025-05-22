@@ -54,7 +54,7 @@ func (c EmbeddingClient) Embed(str string) ([]float64, error) {
 
 	embedding, err := c.client.Embeddings.New(context.TODO(), openai.EmbeddingNewParams{
 		Input:      openai.EmbeddingNewParamsInputUnion{OfArrayOfStrings: strings},
-		Model:      openai.EmbeddingModel(c.model),
+		Model:      openai.EmbeddingModel(c.model.String()),
 		Dimensions: openai.Opt(int64(c.embeddingDimensions)),
 	})
 	if err != nil {
