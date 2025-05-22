@@ -25,12 +25,51 @@ func ingest(ctx context.Context, repoPath string) error {
 	client := openai.NewEmbeddingClient(config.Model, config.Dimensions)
 
 	git.GitLog(ctx, repoPath, func(commitHash string, entry string) error {
-		embedding, err := client.Embed(entry)
+		note, err := git.GetCommitNote(ctx, repoPath, commitHash)
 		if err != nil {
 			return err
 		}
 
+		var embedding []float64
+
+		if note != "" {
+			var embeddingJSON openai.EmbeddingJSON
+			err := embeddingJSON.UnmarshalJSON([]byte(note))
+			if err != nil {
+				return err
+			}
+
+			if embeddingJSON.Model != config.Model || embeddingJSON.Dimensions != config.Dimensions {
+				embedding = nil
+			} else {
+				embedding = embeddingJSON.Vector
+			}
+		}
+
+		if embedding == nil {
+			embedding, err = client.Embed(entry)
+			if err != nil {
+				return err
+			}
+
+			if config.WriteNotes {
+				embeddingJSON := openai.EmbeddingJSON{
+					Model:      config.Model,
+					Dimensions: config.Dimensions,
+					Vector:     embedding,
+				}
+
+				noteBytes, err := embeddingJSON.MarshalJSON()
+				if err != nil {
+					return err
+				}
+
+				git.SetCommitNote(ctx, repoPath, commitHash, string(noteBytes))
+			}
+		}
+
 		db.InsertCommitEmbedding(dbh, commitHash, embedding)
+
 		return nil
 	})
 
