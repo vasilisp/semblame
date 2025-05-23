@@ -10,7 +10,7 @@ import (
 // GitLog runs 'git log -p' in the specified repository path and invokes the
 // provided handler for each complete log entry.
 func GitLog(ctx context.Context, repoPath string, entryHandler func(commitHash string, entry string) error) error {
-	cmd := exec.CommandContext(ctx, "git", "-C", repoPath, "log", "-p")
+	cmd := exec.CommandContext(ctx, "git", "-C", repoPath, "log", "-p", "--reverse")
 
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
