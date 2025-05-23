@@ -1,29 +1,45 @@
 package git
 
 import (
+	"bufio"
 	"context"
 	"os/exec"
-	"strings"
 
 	"github.com/vasilisp/semblame/internal/util"
 )
 
-// GetCommitNote retrieves the note attached to a given commit hash (if any) using `git notes show <commitHash>`.
-// It returns the note as a string, or an empty string if no note is found, or an error if the command fails for other reasons.
-func GetCommitNote(ctx context.Context, repoPath, commitHash string) (string, error) {
+// GetCommitNoteWithCallback streams the note attached to a given commit hash (if any) line by line,
+// calling the provided callback for each line. If no note is found, the callback is not called.
+// Returns an error if the command fails for other reasons.
+func GetCommitNoteWithCallback(ctx context.Context, repoPath, commitHash string, onLine func([]byte)) error {
 	cmd := exec.CommandContext(ctx, "git", "-C", repoPath, "notes", "show", commitHash)
-
-	out, err := cmd.Output()
+	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		// If the note does not exist, git notes show exits with status 1 and no output.
-		// We treat this as "no note" rather than an error.
-		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
-			return "", nil
-		}
-		return "", err
+		return err
+	}
+	if err := cmd.Start(); err != nil {
+		return err
 	}
 
-	return strings.TrimRight(string(out), "\n"), nil
+	scanner := bufio.NewScanner(stdout)
+	found := false
+	for scanner.Scan() {
+		found = true
+		onLine(scanner.Bytes())
+	}
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+
+	if err := cmd.Wait(); err != nil {
+		// If the note does not exist, git notes show exits with status 1 and no output.
+		// We treat this as "no note" rather than an error.
+		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 && !found {
+			return nil
+		}
+		return err
+	}
+	return nil
 }
 
 func SetCommitNote(ctx context.Context, repoPath, commitHash, note string) error {

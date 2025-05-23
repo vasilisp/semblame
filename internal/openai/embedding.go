@@ -106,6 +106,7 @@ type EmbeddingJSON interface {
 	EmbeddingModel() shared.EmbeddingModel
 	EmbeddingDimensions() uint32
 	EmbeddingVector() ([]float64, error)
+	EmbeddingFile() string
 }
 
 func MakeEmbeddingJSON(typ EmbeddingType, model shared.EmbeddingModel, dimensions uint32, file string, vector []float64) EmbeddingJSON {
@@ -165,4 +166,8 @@ func (e *embeddingJSON) EmbeddingVector() ([]float64, error) {
 	}
 
 	return vector, nil
+}
+
+func (e *embeddingJSON) EmbeddingFile() string {
+	return e.File
 }

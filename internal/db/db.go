@@ -20,11 +20,23 @@ CREATE TABLE IF NOT EXISTS commit_embeddings (
 );
 `
 
-// InitCommitEmbeddingsTable initializes the commit_embeddings table for mapping git commits to embeddings.
-func InitCommitEmbeddingsTable(db *sql.DB) {
+const createFilesTableSQL = `
+CREATE TABLE IF NOT EXISTS file_embeddings (
+    file_path TEXT PRIMARY KEY,
+    embedding VECTOR
+);
+`
+
+// InitTables initializes the commit_embeddings and file_embeddings tables.
+func InitTables(db *sql.DB) {
 	_, err := db.Exec(createCommitsTableSQL)
 	if err != nil {
 		log.Fatalf("failed to create commit_embeddings table: %v", err)
+	}
+
+	_, err = db.Exec(createFilesTableSQL)
+	if err != nil {
+		log.Fatalf("failed to create file_embeddings table: %v", err)
 	}
 }
 
@@ -35,7 +47,7 @@ func Open(ctx context.Context, uuid uuid.UUID) *sql.DB {
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
 	}
-	InitCommitEmbeddingsTable(db)
+	InitTables(db)
 
 	return db
 }
@@ -59,6 +71,26 @@ func InsertCommitEmbedding(db *sql.DB, commitHash string, embedding []float64) {
 	)
 	if err != nil {
 		log.Fatalf("failed to insert commit embedding: %v", err)
+	}
+}
+
+func InsertFileEmbedding(db *sql.DB, filePath string, embedding []float64) {
+	floats := make([]float32, len(embedding))
+	for i, v := range embedding {
+		floats[i] = float32(v)
+	}
+
+	blob, err := sqlite_vec.SerializeFloat32(floats)
+	if err != nil {
+		log.Fatalf("failed to serialize file embedding: %v", err)
+	}
+
+	_, err = db.Exec(
+		"INSERT OR REPLACE INTO file_embeddings (file_path, embedding) VALUES (?, ?)",
+		filePath, blob,
+	)
+	if err != nil {
+		log.Fatalf("failed to insert file embedding: %v", err)
 	}
 }
 

@@ -16,38 +16,52 @@ import (
 
 type embeddingDimensions uint16
 
+func ingestNote(ctx context.Context, config *git.Config, repoPath, commitHash string) ([]float64, map[string][]float64, error) {
+	var commitEmbedding []float64
+	fileEmbeddings := make(map[string][]float64)
+
+	err := git.GetCommitNoteWithCallback(ctx, repoPath, commitHash, func(line []byte) {
+		embeddingJSON, err := openai.UnmarshalJSON(line)
+		if err != nil {
+			log.Fatalf("failed to unmarshal note: %v", err)
+		}
+
+		if embeddingJSON.EmbeddingModel() != config.Model || embeddingJSON.EmbeddingDimensions() != config.Dimensions {
+			return
+		}
+
+		embedding, err := embeddingJSON.EmbeddingVector()
+		if err != nil {
+			log.Fatalf("failed to get embedding vector: %v", err)
+		}
+
+		if embeddingJSON.EmbeddingFile() != "" {
+			fileEmbeddings[embeddingJSON.EmbeddingFile()] = embedding
+		} else {
+			commitEmbedding = embedding
+		}
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return commitEmbedding, fileEmbeddings, nil
+}
+
 func ingest(ctx context.Context, repoPath string) error {
 	config := git.NewConfig(ctx, repoPath)
 
 	dbh := db.Open(ctx, config.UUID)
 	defer dbh.Close()
 
-	db.InitCommitEmbeddingsTable(dbh)
+	db.InitTables(dbh)
 
 	client := openai.NewEmbeddingClient(config.Model, config.Dimensions)
 
 	err := git.GitLog(ctx, repoPath, func(commitHash string, entry string) error {
-		note, err := git.GetCommitNote(ctx, repoPath, commitHash)
+		embedding, fileEmbeddings, err := ingestNote(ctx, &config, repoPath, commitHash)
 		if err != nil {
 			return err
-		}
-
-		var embedding []float64
-
-		if note != "" {
-			embeddingJSON, err := openai.UnmarshalJSON([]byte(note))
-			if err != nil {
-				return err
-			}
-
-			if embeddingJSON.EmbeddingModel() != config.Model || embeddingJSON.EmbeddingDimensions() != config.Dimensions {
-				embedding = nil
-			} else {
-				embedding, err = embeddingJSON.EmbeddingVector()
-				if err != nil {
-					return err
-				}
-			}
 		}
 
 		if embedding == nil {
@@ -71,6 +85,9 @@ func ingest(ctx context.Context, repoPath string) error {
 		}
 
 		db.InsertCommitEmbedding(dbh, commitHash, embedding)
+		for filePath, fileEmbedding := range fileEmbeddings {
+			db.InsertFileEmbedding(dbh, filePath, fileEmbedding)
+		}
 
 		return nil
 	})
