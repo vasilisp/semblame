@@ -14,7 +14,12 @@ import (
 	"github.com/vasilisp/semblame/internal/util"
 )
 
-type EmbeddingClient struct {
+type EmbeddingClient interface {
+	Embed(str string) ([]float64, error)
+	seal()
+}
+
+type embeddingClient struct {
 	client              *openai.Client
 	model               shared.EmbeddingModel
 	embeddingDimensions uint32
@@ -25,7 +30,7 @@ func NewEmbeddingClient(model shared.EmbeddingModel, embeddingDimensions uint32)
 
 	client := openai.NewClient()
 
-	return EmbeddingClient{
+	return &embeddingClient{
 		client:              &client,
 		model:               model,
 		embeddingDimensions: embeddingDimensions,
@@ -47,7 +52,7 @@ func splitTextIntoChunks(text string, chunkSize int) *[]string {
 	return &chunks
 }
 
-func (c EmbeddingClient) Embed(str string) ([]float64, error) {
+func (c *embeddingClient) Embed(str string) ([]float64, error) {
 	util.Assert(str != "", "embed empty string")
 
 	strings := *splitTextIntoChunks(str, 512)
@@ -69,6 +74,8 @@ func (c EmbeddingClient) Embed(str string) ([]float64, error) {
 
 	return vector, nil
 }
+
+func (c *embeddingClient) seal() {}
 
 type EmbeddingType uint8
 
