@@ -12,8 +12,8 @@ import (
 )
 
 type stringConverter[T any] struct {
-	ToString   func(T) string
-	FromString func(string) (T, error)
+	toString   func(T) string
+	fromString func(string) (T, error)
 }
 
 func configGet(ctx context.Context, repoPath, key string) (string, error) {
@@ -64,11 +64,11 @@ func ConfigGetWithDefault[T any](ctx context.Context, repoPath, key string, conv
 	}
 
 	if val == "" {
-		configSet(ctx, repoPath, key, converter.ToString(defaultValue))
+		configSet(ctx, repoPath, key, converter.toString(defaultValue))
 		return defaultValue, nil
 	}
 
-	result, err := converter.FromString(val)
+	result, err := converter.fromString(val)
 	if err != nil {
 		return defaultValue, err
 	}
@@ -78,8 +78,8 @@ func ConfigGetWithDefault[T any](ctx context.Context, repoPath, key string, conv
 
 func uint32Converter() stringConverter[uint32] {
 	return stringConverter[uint32]{
-		ToString: func(d uint32) string { return strconv.FormatUint(uint64(d), 10) },
-		FromString: func(s string) (uint32, error) {
+		toString: func(d uint32) string { return strconv.FormatUint(uint64(d), 10) },
+		fromString: func(s string) (uint32, error) {
 			val, err := strconv.ParseUint(s, 10, 32)
 			if err != nil {
 				return 0, err
@@ -109,8 +109,8 @@ func EmbeddingModel(ctx context.Context, repoPath string) string {
 
 func boolConverter() stringConverter[bool] {
 	return stringConverter[bool]{
-		ToString:   func(b bool) string { return strconv.FormatBool(b) },
-		FromString: func(s string) (bool, error) { return strconv.ParseBool(s) },
+		toString:   func(b bool) string { return strconv.FormatBool(b) },
+		fromString: func(s string) (bool, error) { return strconv.ParseBool(s) },
 	}
 }
 
