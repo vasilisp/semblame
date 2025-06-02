@@ -7,7 +7,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/mattn/go-sqlite3 v1.14.28
 	github.com/openai/openai-go v1.2.0
-	github.com/vasilisp/lingograph v0.0.0-20250530120258-9b33cc829a6a
+	github.com/vasilisp/lingograph v0.0.1-alpha.1
 )
 
 require (
